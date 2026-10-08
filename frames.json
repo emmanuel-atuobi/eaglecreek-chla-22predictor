@@ -1,5 +1,5 @@
 {
- "site": "Eagle Creek \u00b7 22-predictor",
+ "site": "Eagle Creek Chlorophyll-a",
  "subtitle": "Eagle Creek Reservoir chlorophyll-a \u2014 frozen 22-predictor XGBoost model",
  "caption": "This is the 22-predictor model edition, separate from the original thesis viewer. Values are model predictions, not measurements. Satellite basemap is recent imagery and is not time-matched to the prediction date. Model was calibrated across many U.S. lakes; performance at any single site is sensitive to local optical conditions.",
  "value_scale": 100.0,

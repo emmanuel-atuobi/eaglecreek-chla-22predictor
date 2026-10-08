@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Eagle Creek Chlorophyll — 22-Predictor Model</title>
+<title>Eagle Creek Chlorophyll-a</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root {
@@ -430,7 +430,7 @@
 
 <div id="app">
   <header class="masthead">
-    <h1 id="site-name">Eagle Creek · 22-predictor</h1>
+    <h1 id="site-name">Eagle Creek Chlorophyll-a</h1>
     <span class="unit">Chlorophyll-a &middot; &micro;g/L</span>
   </header>
 
@@ -469,7 +469,7 @@
       </div>
     </div>
 
-    <div class="section-head">Scene timeline <span>one bar per scene, tinted by its mean</span></div>
+    <div class="section-head">Map timeline <span>one bar per map, tinted by its mean</span></div>
 
     <div class="strip-wrap">
       <input class="scrub" id="scrub" type="range" min="0" max="0" value="0" step="1" aria-label="Scrub through seasons">
@@ -715,7 +715,7 @@
     var m = meta[current];
 
     el.label.textContent = m.label;
-    el.index.textContent = "SCENE " + (current + 1) + " / " + meta.length;
+    el.index.textContent = "MAP " + (current + 1) + " / " + meta.length;
 
     stat.min.textContent = m.min.toFixed(1);
     stat.mean.textContent = m.mean.toFixed(1);
@@ -1013,7 +1013,7 @@
       meta = manifest.frames;
 
       el.siteName.textContent = manifest.site;
-      document.title = manifest.site + " \u2014 predicted chlorophyll-a";
+      document.title = manifest.site;
 
       // Everything except the pixels is already here, so draw the whole
       // interface now and let the imagery fill in behind it.
