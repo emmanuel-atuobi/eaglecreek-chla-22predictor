@@ -11,7 +11,7 @@
     --hull:   #12252a;
     --rule:   #27424a;
     --chalk:  #eef3f1;
-    --silt:   #8ba3a4;
+    --silt:   #b3c9c7;
 
     --sans: ui-sans-serif, "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
@@ -33,6 +33,7 @@
     display: flex;
     flex-direction: column;
     height: 100dvh;
+    overflow-x: hidden;
   }
 
   /* ── masthead ─────────────────────────────────────────────────── */
@@ -58,9 +59,8 @@
   .masthead .unit {
     margin-left: auto;
     flex: none;
-    font-family: var(--mono);
-    font-size: 10.5px;
-    letter-spacing: 0.02em;
+    font-size: 11.5px;
+    letter-spacing: 0.01em;
     color: var(--silt);
     white-space: nowrap;
   }
@@ -105,54 +105,51 @@
   .pin-value { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
   .pin-class { margin-top: 3px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--silt); }
   .pin-swatch { width: 9px; height: 9px; flex: none; }
+  .pin-trophic {
+    margin-top: 4px;
+    padding-left: 15px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--chalk);
+  }
   .pin-hint { margin-top: 5px; font-size: 10px; color: var(--silt); }
 
-  /* on-map frame stats */
-  .readout {
-    position: absolute;
-    left: 10px; bottom: 10px;
-    z-index: 500;
-    padding: 9px 12px 10px;
-    background: rgba(11,22,24,0.86);
-    border: 1px solid var(--rule);
-    color: var(--silt);
-    pointer-events: none;
-    backdrop-filter: blur(3px);
-  }
-  .readout-head {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
-    color: var(--chalk);
-    padding-bottom: 5px;
-    margin-bottom: 6px;
-    border-bottom: 1px solid var(--rule);
-  }
-  .readout-head em {
-    font-style: normal;
-    font-family: var(--mono);
-    letter-spacing: 0;
-    text-transform: none;
-    color: var(--silt);
-  }
-  .readout-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    font-family: var(--mono);
-    font-size: 13px;
-    line-height: 1.65;
-  }
-  .readout-row b { color: var(--chalk); font-weight: 600; }
+  /* ── reservoir statistics, in the deck so they never cover the water ── */
 
-  .readout-split {
-    margin: 7px 0 6px;
-    border-top: 1px solid var(--rule);
+  .stats-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .stat-cell { flex: 1; min-width: 0; }
+  .stat-cell.wide { flex: 2.6; }
+  .cov-sub {
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--silt);
+    white-space: nowrap;
+  }
+  .stat-cell .k {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--silt);
+  }
+  .stat-cell .v {
+    display: block;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--chalk);
   }
   .cov-bar {
     height: 3px;
-    margin: 5px 0 4px;
+    margin-top: 4px;
     background: var(--rule);
   }
   .cov-bar i {
@@ -160,12 +157,6 @@
     height: 100%;
     background: var(--chalk);
     transition: width 160ms ease;
-  }
-  .readout-sub {
-    font-family: var(--mono);
-    font-size: 9.5px;
-    line-height: 1.4;
-    color: var(--silt);
   }
 
   /* ── control deck ─────────────────────────────────────────────── */
@@ -213,6 +204,21 @@
 
   .deck-tools { display: flex; gap: 7px; flex: none; }
 
+  .peek-btn {
+    flex: none;
+    width: 26px; height: 26px;
+    display: grid; place-items: center;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--silt);
+    cursor: pointer;
+    padding: 0;
+  }
+  .peek-btn svg { width: 14px; height: 14px; display: block; }
+  .peek-btn[aria-pressed="true"] { background: var(--chalk); color: var(--abyss); }
+  .peek-btn:disabled { opacity: 0.35; cursor: default; }
+
   .speed-btn {
     flex: none;
     min-width: 34px; height: 26px;
@@ -231,8 +237,8 @@
     display: flex;
     align-items: baseline;
     gap: 7px;
-    margin-top: 13px;
-    margin-bottom: 6px;
+    margin-top: 10px;
+    margin-bottom: 5px;
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.09em;
@@ -290,12 +296,13 @@
   .strip-axis {
     display: flex;
     margin-top: 5px;
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
     color: var(--silt);
   }
   .strip-axis span {
+    min-width: 0;
     border-left: 1px solid var(--rule);
     padding-left: 3px;
     padding-top: 2px;
@@ -341,9 +348,16 @@
   }
   .legend-cell .name {
     display: block;
-    font-size: 9.5px;
-    line-height: 1.3;
-    margin-top: 1px;
+    font-size: 9px;
+    line-height: 1.25;
+  }
+  .legend-cell .trophic {
+    display: block;
+    margin-top: 2px;
+    font-size: 9px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--chalk);
   }
 
   .leaflet-control-layers {
@@ -432,12 +446,30 @@
         <div class="frame-index" id="frame-index">&nbsp;</div>
       </div>
       <div class="deck-tools">
+        <button class="peek-btn" id="peek-btn" aria-pressed="false"
+                aria-label="Hide the prediction layer" title="Pause first, then hide the predictions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" aria-hidden="true" id="peek-icon"></svg>
+        </button>
         <button class="speed-btn" id="speed-btn" aria-label="Change playback speed">1&times;</button>
         <button class="info-btn" id="info-btn" aria-expanded="false" aria-controls="caption" aria-label="About this map">i</button>
       </div>
     </div>
 
-    <div class="section-head">Scene timeline <span>one bar per scene, tinted by its lake-wide mean</span></div>
+    <div class="section-head">Reservoir statistics <span>&micro;g/L</span></div>
+
+    <div class="stats-row">
+      <div class="stat-cell"><span class="k">min</span><span class="v" id="stat-min">&nbsp;</span></div>
+      <div class="stat-cell"><span class="k">mean</span><span class="v" id="stat-mean">&nbsp;</span></div>
+      <div class="stat-cell"><span class="k">max</span><span class="v" id="stat-max">&nbsp;</span></div>
+      <div class="stat-cell wide">
+        <span class="k" data-cov>prediction coverage</span><span class="v" id="stat-cov">&nbsp;</span>
+        <div class="cov-bar"><i id="cov-fill" style="width:0%"></i></div>
+        <div class="cov-sub" id="stat-cov-sub"></div>
+      </div>
+    </div>
+
+    <div class="section-head">Scene timeline <span>one bar per scene, tinted by its mean</span></div>
 
     <div class="strip-wrap">
       <input class="scrub" id="scrub" type="range" min="0" max="0" value="0" step="1" aria-label="Scrub through seasons">
@@ -463,6 +495,15 @@
 (function () {
   "use strict";
 
+  // Trophic names for the four chlorophyll-a classes, in the same order as
+  // classes.bounds. Modified Carlson: his single eutrophic band is split in two.
+  var TROPHIC = [
+    "Oligo\u2013mesotrophic",
+    "Low eutrophic",
+    "High eutrophic",
+    "Hypereutrophic"
+  ];
+
   var BASE_STEP_MS = 750;       // comfortable reading pace for one scene
   var SPEEDS = [1, 2, 4, 0.5];  // tap order on the speed button
   var OVERLAY_ALPHA = 240;      // 0-255, lets a little basemap texture through
@@ -483,8 +524,16 @@
     legend: document.getElementById("legend"),
     caption: document.getElementById("caption"),
     infoBtn: document.getElementById("info-btn"),
-    speedBtn: document.getElementById("speed-btn")
+    speedBtn: document.getElementById("speed-btn"),
+    peekBtn: document.getElementById("peek-btn"),
+    peekIcon: document.getElementById("peek-icon")
   };
+
+  var ICON_EYE = '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/>' +
+                 '<circle cx="12" cy="12" r="3"/>';
+  var ICON_EYE_OFF = '<path d="M2 12s3.6-7 10-7c2 0 3.7.7 5.1 1.6"/>' +
+                     '<path d="M22 12s-3.6 7-10 7c-2 0-3.7-.7-5.1-1.6"/>' +
+                     '<line x1="3" y1="3" x2="21" y2="21"/>';
 
   var ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
   var ICON_PAUSE = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
@@ -499,6 +548,7 @@
   var visible = -1;
   var started = false;
   var speedIdx = 0;
+  var hidden = false;        // prediction layer peeked off, only while paused
   var timer = null;
   var map = null;
   var pinned = null;
@@ -615,6 +665,10 @@
   }
 
   function popupHtml(value) {
+    if (hidden) {
+      return '<div class="pin-value">&mdash;</div>' +
+             '<div class="pin-hint">Prediction layer is hidden.</div>';
+    }
     if (value === undefined) {
       return '<div class="pin-value">&hellip;</div>' +
              '<div class="pin-hint">Still loading this date.</div>';
@@ -630,6 +684,7 @@
              '<span class="pin-swatch" style="background:' + manifest.classes.colors[ci] + '"></span>' +
              manifest.classes.labels[ci] +
            '</div>' +
+           '<div class="pin-trophic">' + TROPHIC[ci] + '</div>' +
            '<div class="pin-hint">' + meta[current].label +
              ' &middot; stays pinned as the map plays</div>';
   }
@@ -649,7 +704,7 @@
       pixels[visible].overlay.setOpacity(0);
     }
     if (pixels[i]) {
-      pixels[i].overlay.setOpacity(1);
+      pixels[i].overlay.setOpacity(hidden ? 0 : 1);
       visible = i;
     }
 
@@ -662,21 +717,25 @@
     el.label.textContent = m.label;
     el.index.textContent = "SCENE " + (current + 1) + " / " + meta.length;
 
-    stat.min.innerHTML = "<b>" + m.min.toFixed(1) + "</b>";
-    stat.mean.innerHTML = "<b>" + m.mean.toFixed(1) + "</b>";
-    stat.max.innerHTML = "<b>" + m.max.toFixed(1) + "</b>";
+    stat.min.textContent = m.min.toFixed(1);
+    stat.mean.textContent = m.mean.toFixed(1);
+    stat.max.textContent = m.max.toFixed(1);
 
     if (m.coverage_pct === null || m.coverage_pct === undefined) {
-      stat.cov.innerHTML = "<b>" + m.valid_pixels.toLocaleString() + "</b>";
+      stat.cov.textContent = m.valid_pixels.toLocaleString();
       stat.covFill.style.width = "0%";
-      stat.covSub.textContent = "valid pixels";
+      stat.covLabel.textContent = "valid pixels";
+      stat.covSub.textContent = "";
     } else {
-      stat.cov.innerHTML = "<b>" + m.coverage_pct.toFixed(0) + "%</b>";
+      stat.cov.textContent = m.coverage_pct.toFixed(0) + "%";
       stat.covFill.style.width = Math.min(100, m.coverage_pct) + "%";
+      stat.covLabel.textContent =
+        m.coverage_pct < 50
+          ? "prediction coverage \u00B7 partial"
+          : "prediction coverage";
       stat.covSub.textContent =
-        m.valid_pixels.toLocaleString() + " of " +
-        manifest.mask_pixels.toLocaleString() + " px" +
-        (m.coverage_pct < 50 ? "  \u00B7 partial scene" : "");
+        m.valid_pixels.toLocaleString() + " / " +
+        manifest.mask_pixels.toLocaleString() + " px";
     }
 
     el.scrub.value = current;
@@ -697,11 +756,13 @@
 
   function play() {
     if (timer) return;
+    if (hidden) setHidden(false);
     timer = setInterval(function () {
       show(nextReady((current + 1) % meta.length));
     }, stepMs());
     el.playIcon.innerHTML = ICON_PAUSE;
     el.play.setAttribute("aria-label", "Pause animation");
+    syncPeek();
   }
 
   function pause() {
@@ -709,6 +770,27 @@
     timer = null;
     el.playIcon.innerHTML = ICON_PLAY;
     el.play.setAttribute("aria-label", "Play animation");
+    syncPeek();
+  }
+
+  // Peeking underneath only makes sense on a still frame, so the control is
+  // live while paused and disabled while playing.
+  function setHidden(v) {
+    hidden = v;
+    if (pixels[current]) pixels[current].overlay.setOpacity(hidden ? 0 : 1);
+    el.peekIcon.innerHTML = hidden ? ICON_EYE_OFF : ICON_EYE;
+    el.peekBtn.setAttribute("aria-pressed", String(hidden));
+    el.peekBtn.setAttribute("aria-label",
+      hidden ? "Show the prediction layer" : "Hide the prediction layer");
+    refreshPin();
+  }
+
+  function syncPeek() {
+    var playing = !!timer;
+    el.peekBtn.disabled = playing;
+    el.peekBtn.title = playing
+      ? "Pause first, then hide the predictions"
+      : (hidden ? "Show the predictions" : "Hide the predictions to see the water beneath");
   }
 
   // ── deck, built entirely from the manifest ──────────────────────
@@ -723,6 +805,7 @@
         '<i style="background:' + c.colors[i] + '"></i>' +
         '<span class="range">' + range + '</span>' +
         '<span class="name">' + names[i] + '</span>' +
+        '<span class="trophic">' + TROPHIC[i] + '</span>' +
       '</div>';
     }).join("");
   }
@@ -759,61 +842,69 @@
     el.scrub.max = meta.length - 1;
   }
 
-  function buildReadout() {
-    var box = L.DomUtil.create("div", "readout");
-    box.innerHTML =
-      '<div class="readout-head">Reservoir statistics <em>&micro;g/L</em></div>' +
-      '<div class="readout-row"><span>min</span><span id="stat-min"></span></div>' +
-      '<div class="readout-row"><span>mean</span><span id="stat-mean"></span></div>' +
-      '<div class="readout-row"><span>max</span><span id="stat-max"></span></div>' +
-      '<div class="readout-split"></div>' +
-      '<div class="readout-row"><span>coverage</span><span id="stat-cov"></span></div>' +
-      '<div class="cov-bar"><i id="cov-fill" style="width:0%"></i></div>' +
-      '<div class="readout-sub" id="stat-cov-sub"></div>';
-    document.getElementById("map").appendChild(box);
+  function bindReadout() {
     stat.min = document.getElementById("stat-min");
     stat.mean = document.getElementById("stat-mean");
     stat.max = document.getElementById("stat-max");
     stat.cov = document.getElementById("stat-cov");
     stat.covFill = document.getElementById("cov-fill");
+    stat.covLabel = document.querySelector('.stat-cell .k[data-cov]');
     stat.covSub = document.getElementById("stat-cov-sub");
   }
 
   function buildCaption() {
     el.caption.innerHTML =
-      "<p>" + manifest.subtitle + ". Tap any pixel to read its predicted value; " +
-      "the reading follows the animation.</p><p>" + manifest.caption + "</p>";
+      "<p>Tap any pixel to read its predicted value; the reading follows " +
+        "the animation.</p>" +
+      "<p>Trophic classes follow a modified Carlson TSI classification.</p>" +
+      "<p>Values represent model-predicted chlorophyll-a concentrations. The " +
+        "reconstruction is most appropriate for interpreting long-term trends " +
+        "and spatial patterns rather than exact point-scale concentrations.</p>" +
+      "<p>Basemap: The satellite imagery shown is a recent reference image and " +
+        "is not time-matched to the prediction date.</p>";
   }
 
   function buildMap() {
-    map = L.map("map", { zoomControl: true, attributionControl: true, tap: true });
+    // zoomSnap: 0 lets fitBounds land on a fractional zoom. With the default of 1
+    // it snaps to whole levels, and since each level doubles the scale, a screen
+    // slightly too small for one level drops to the next and the reservoir
+    // appears at half size. Measured fill went from 41-75% across devices to
+    // 74-77%. zoomDelta keeps the +/- buttons stepping whole levels.
+    map = L.map("map", {
+      zoomControl: true,
+      attributionControl: true,
+      tap: true,
+      zoomSnap: 0,
+      zoomDelta: 1,
+      // Leaflet derives the map's minimum zoom from its layers, and the deep
+      // Clarity layer carries minZoom 17 so it only draws above the NAIP cache.
+      // Without an explicit floor here, Leaflet treats 17 as the map minimum and
+      // snaps the view four levels in whenever the layer set changes.
+      minZoom: 3,
+      maxZoom: 19,
+      // Without this, a pinch past the ceiling rubber-bands back, which reads
+      // as the map rejecting you. False makes it stop cleanly at the limit.
+      bounceAtZoomLimits: false
+    });
 
-    // NAIP-derived USGS imagery reads much brighter over Indiana than the Esri
-    // layers; it stops at native zoom 16, so Leaflet upsamples past that.
-    var naip = L.tileLayer(
-      "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19,
-        maxNativeZoom: 16,
-        attribution: "Imagery: USGS The National Map (NAIP)"
-      }
-    );
+    // USGS's cached NAIP tiles stop at zoom 16. Their NAIPPlus ImageServer can
+    // render deeper on demand, but it took 5-6s per zoom step for a modest gain,
+    // so Esri Clarity takes over above 16 instead: it has real tiles there and
+    // loads immediately. The seam is a seasonal one (Clarity is leaf-off here).
+    var USGS_URL = "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}";
+    var CLARITY_URL = "https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+    var ESRI_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
-    var clarity = L.tileLayer(
-      "https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19,
-        attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics"
-      }
-    );
+    var ESRI_ATTR = "Imagery &copy; Esri, Maxar, Earthstar Geographics";
+    var PAIR_ATTR = "Imagery: USGS National Map, Esri, Maxar";
 
-    var esri = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19,
-        attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics"
-      }
-    );
+    var naip = L.layerGroup([
+      L.tileLayer(USGS_URL, { maxZoom: 16, attribution: PAIR_ATTR }),
+      L.tileLayer(CLARITY_URL, { minZoom: 17, maxZoom: 19 })
+    ]);
+
+    var clarity = L.tileLayer(CLARITY_URL, { maxZoom: 19, attribution: ESRI_ATTR });
+    var esri = L.tileLayer(ESRI_URL, { maxZoom: 19, attribution: ESRI_ATTR });
 
     naip.addTo(map);
 
@@ -825,7 +916,22 @@
 
     var union = L.latLngBounds(meta[0].bounds_latlon);
     meta.forEach(function (m) { union.extend(m.bounds_latlon); });
-    map.fitBounds(union, { padding: [18, 18] });
+    // The attribution bar is ~13px tall and licence-required, so it cannot be
+    // removed. Pad the bottom edge extra rather than zooming out, so only the
+    // strip behind the credit is given up. Measured: the southernmost scene
+    // overlapped it by 5-6px with symmetric padding.
+    map.fitBounds(union, {
+      paddingTopLeft: [18, 18],
+      paddingBottomRight: [18, 44]
+    });
+
+    // The fractional fit above is what makes the opening view consistent across
+    // devices, but it leaves tiles resampled at ~0.95x, which reads as a soft
+    // basemap. Restoring integer snapping now means every deliberate zoom lands
+    // on a native tile level and renders 1:1 sharp.
+    map.options.zoomSnap = 1;
+
+
 
     map.on("click", function (e) {
       pinned = e.latlng;
@@ -841,6 +947,11 @@
   // ── wiring ──────────────────────────────────────────────────────
 
   el.play.addEventListener("click", function () { timer ? pause() : play(); });
+
+  el.peekBtn.addEventListener("click", function () {
+    if (timer) return;                 // playing: control is inert
+    setHidden(!hidden);
+  });
 
   el.speedBtn.addEventListener("click", function () {
     speedIdx = (speedIdx + 1) % SPEEDS.length;
@@ -906,9 +1017,10 @@
 
       // Everything except the pixels is already here, so draw the whole
       // interface now and let the imagery fill in behind it.
+      bindReadout();
+      setHidden(false);
       buildLegend();
       buildStrip();
-      buildReadout();
       buildCaption();
       buildMap();
 
