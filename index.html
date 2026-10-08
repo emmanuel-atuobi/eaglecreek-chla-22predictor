@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Eagle Creek Chlorophyll — 22-Predictor Model</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --abyss:  #0b1618;
+    --hull:   #12252a;
+    --rule:   #27424a;
+    --chalk:  #eef3f1;
+    --silt:   #8ba3a4;
+
+    --sans: ui-sans-serif, "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--abyss);
+    color: var(--chalk);
+    font-family: var(--sans);
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  /* ── masthead ─────────────────────────────────────────────────── */
+
+  .masthead {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 14px 9px;
+    padding-top: max(10px, env(safe-area-inset-top));
+    border-bottom: 1px solid var(--rule);
+    background: var(--hull);
+  }
+  .masthead h1 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .masthead .unit {
+    margin-left: auto;
+    flex: none;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.02em;
+    color: var(--silt);
+    white-space: nowrap;
+  }
+
+  /* ── map ──────────────────────────────────────────────────────── */
+
+  #map {
+    flex: 1;
+    min-height: 0;
+    background: var(--abyss);
+    cursor: crosshair;
+  }
+  .chla-layer {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .leaflet-container { background: var(--abyss); font-family: var(--sans); }
+  .leaflet-control-attribution {
+    background: rgba(11,22,24,0.72) !important;
+    color: var(--silt) !important;
+    font-size: 9px !important;
+  }
+  .leaflet-control-attribution a { color: var(--silt) !important; }
+  .leaflet-control-zoom a {
+    background: var(--hull);
+    color: var(--chalk);
+    border-color: var(--rule);
+  }
+  .leaflet-control-zoom a:hover { background: var(--rule); color: var(--chalk); }
+
+  /* pinned pixel readout */
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+    background: var(--hull);
+    color: var(--chalk);
+    border: 1px solid var(--rule);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+  }
+  .leaflet-popup-content-wrapper { border-radius: 3px; }
+  .leaflet-popup-content { margin: 9px 12px; font-family: var(--mono); font-size: 12px; }
+  .leaflet-popup-close-button { color: var(--silt) !important; }
+
+  .pin-value { font-size: 19px; font-weight: 600; letter-spacing: -0.02em; }
+  .pin-class { margin-top: 3px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--silt); }
+  .pin-swatch { width: 9px; height: 9px; flex: none; }
+  .pin-hint { margin-top: 5px; font-size: 10px; color: var(--silt); }
+
+  /* on-map frame stats */
+  .readout {
+    position: absolute;
+    left: 10px; bottom: 10px;
+    z-index: 500;
+    padding: 9px 12px 10px;
+    background: rgba(11,22,24,0.86);
+    border: 1px solid var(--rule);
+    color: var(--silt);
+    pointer-events: none;
+    backdrop-filter: blur(3px);
+  }
+  .readout-head {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--chalk);
+    padding-bottom: 5px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .readout-head em {
+    font-style: normal;
+    font-family: var(--mono);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--silt);
+  }
+  .readout-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .readout-row b { color: var(--chalk); font-weight: 600; }
+
+  .readout-split {
+    margin: 7px 0 6px;
+    border-top: 1px solid var(--rule);
+  }
+  .cov-bar {
+    height: 3px;
+    margin: 5px 0 4px;
+    background: var(--rule);
+  }
+  .cov-bar i {
+    display: block;
+    height: 100%;
+    background: var(--chalk);
+    transition: width 160ms ease;
+  }
+  .readout-sub {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: var(--silt);
+  }
+
+  /* ── control deck ─────────────────────────────────────────────── */
+
+  .deck {
+    border-top: 1px solid var(--rule);
+    background: var(--hull);
+    padding: 9px 12px;
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
+  }
+
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+  }
+
+  .play {
+    flex: none;
+    width: 38px; height: 38px;
+    display: grid; place-items: center;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    background: var(--chalk);
+    color: var(--abyss);
+    cursor: pointer;
+    padding: 0;
+  }
+  .play svg { width: 15px; height: 15px; display: block; }
+  .play:active { transform: scale(0.94); }
+
+  .stamp { flex: 1; min-width: 0; }
+  .stamp .frame-label {
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  .stamp .frame-index {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--silt);
+    letter-spacing: 0.05em;
+  }
+
+  .deck-tools { display: flex; gap: 7px; flex: none; }
+
+  .speed-btn {
+    flex: none;
+    min-width: 34px; height: 26px;
+    padding: 0 7px;
+    border: 1px solid var(--rule);
+    border-radius: 13px;
+    background: transparent;
+    color: var(--silt);
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .speed-btn:hover { color: var(--chalk); }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    margin-top: 13px;
+    margin-bottom: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--chalk);
+  }
+  .section-head span {
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: 10.5px;
+    color: var(--silt);
+  }
+
+  .info-btn {
+    flex: none;
+    width: 26px; height: 26px;
+    border: 1px solid var(--rule);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--silt);
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .info-btn[aria-expanded="true"] { background: var(--rule); color: var(--chalk); }
+
+  /* signature element: the scrub strip, tinted by each frame's mean class */
+  .strip-wrap {
+    position: relative;
+    padding-bottom: 2px;
+  }
+  .strip {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--tick-gap, 2px);
+    height: 30px;
+  }
+  .tick {
+    flex: 1;
+    min-width: 0;
+    height: 10px;
+    opacity: 0.40;
+    transition: height 120ms ease, opacity 120ms ease;
+  }
+  .tick.is-loaded { opacity: 0.60; }
+  .tick.is-past { opacity: 0.80; }
+  .tick.is-current {
+    height: 30px;
+    opacity: 1;
+    box-shadow: inset 0 3px 0 0 var(--chalk);
+  }
+
+  .strip-axis {
+    display: flex;
+    margin-top: 5px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--silt);
+  }
+  .strip-axis span {
+    border-left: 1px solid var(--rule);
+    padding-left: 3px;
+    padding-top: 2px;
+    white-space: nowrap;
+    overflow: visible;
+  }
+  .strip-axis span.blank { border-left-color: transparent; }
+
+  /* invisible native range sits over the strip: real drag + keyboard for free */
+  .scrub {
+    position: absolute;
+    inset: -6px 0 auto 0;
+    width: 100%;
+    height: 42px;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+  }
+  .scrub::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 42px; }
+  .scrub::-moz-range-thumb { width: 34px; height: 42px; border: 0; }
+  .scrub:focus-visible ~ .strip .tick.is-current { outline: 2px solid var(--chalk); outline-offset: 2px; }
+
+  /* ── legend ───────────────────────────────────────────────────── */
+
+  .legend {
+    display: flex;
+    gap: 3px;
+  }
+  .legend-cell {
+    flex: 1;
+    text-align: center;
+    color: var(--silt);
+  }
+  .legend-cell i { display: block; height: 5px; margin-bottom: 5px; }
+  .legend-cell .range {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--chalk);
+  }
+  .legend-cell .name {
+    display: block;
+    font-size: 9.5px;
+    line-height: 1.3;
+    margin-top: 1px;
+  }
+
+  .leaflet-control-layers {
+    background: var(--hull) !important;
+    border: 1px solid var(--rule) !important;
+    color: var(--chalk);
+    border-radius: 3px !important;
+  }
+  .leaflet-control-layers-list { font-size: 12px; padding: 4px 2px; }
+  .leaflet-control-layers label { color: var(--chalk); }
+
+  /* ── caption drawer ───────────────────────────────────────────── */
+
+  .caption {
+    margin-top: 11px;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--silt);
+  }
+  .caption[hidden] { display: none; }
+  .caption p { margin: 0 0 7px; }
+  .caption p:last-child { margin-bottom: 0; }
+
+  /* ── loading / error ──────────────────────────────────────────── */
+
+  .curtain {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    place-content: center;
+    gap: 10px;
+    padding: 28px;
+    text-align: center;
+    background: var(--abyss);
+  }
+  .curtain[hidden] { display: none; }
+  .curtain .eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--silt);
+  }
+  .curtain .msg { font-size: 14px; line-height: 1.55; max-width: 30ch; margin: 0 auto; }
+  .curtain code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--chalk);
+    background: var(--hull);
+    padding: 1px 5px;
+  }
+
+  button:focus-visible, .scrub:focus-visible { outline: 2px solid var(--chalk); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tick { transition: none; }
+    .play:active { transform: none; }
+  }
+
+  @media (min-width: 720px) {
+    #app { max-width: 780px; margin: 0 auto; border-left: 1px solid var(--rule); border-right: 1px solid var(--rule); }
+    .masthead h1 { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header class="masthead">
+    <h1 id="site-name">Eagle Creek · 22-predictor</h1>
+    <span class="unit">Chlorophyll-a &middot; &micro;g/L</span>
+  </header>
+
+  <div id="map"></div>
+
+  <div class="deck">
+    <div class="transport">
+      <button class="play" id="play" aria-label="Pause animation">
+        <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"></svg>
+      </button>
+      <div class="stamp">
+        <div class="frame-label" id="frame-label">&nbsp;</div>
+        <div class="frame-index" id="frame-index">&nbsp;</div>
+      </div>
+      <div class="deck-tools">
+        <button class="speed-btn" id="speed-btn" aria-label="Change playback speed">1&times;</button>
+        <button class="info-btn" id="info-btn" aria-expanded="false" aria-controls="caption" aria-label="About this map">i</button>
+      </div>
+    </div>
+
+    <div class="section-head">Scene timeline <span>one bar per scene, tinted by its lake-wide mean</span></div>
+
+    <div class="strip-wrap">
+      <input class="scrub" id="scrub" type="range" min="0" max="0" value="0" step="1" aria-label="Scrub through seasons">
+      <div class="strip" id="strip"></div>
+      <div class="strip-axis" id="strip-axis"></div>
+    </div>
+
+    <div class="section-head">Chlorophyll-a <span>&micro;g/L</span></div>
+
+    <div class="legend" id="legend"></div>
+
+    <div class="caption" id="caption" hidden></div>
+  </div>
+</div>
+
+<div class="curtain" id="curtain">
+  <div class="eyebrow">Loading</div>
+  <div class="msg" id="curtain-msg">Reading prediction maps&hellip;</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var BASE_STEP_MS = 750;       // comfortable reading pace for one scene
+  var SPEEDS = [1, 2, 4, 0.5];  // tap order on the speed button
+  var OVERLAY_ALPHA = 240;      // 0-255, lets a little basemap texture through
+
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var el = {
+    curtain: document.getElementById("curtain"),
+    curtainMsg: document.getElementById("curtain-msg"),
+    siteName: document.getElementById("site-name"),
+    play: document.getElementById("play"),
+    playIcon: document.getElementById("play-icon"),
+    label: document.getElementById("frame-label"),
+    index: document.getElementById("frame-index"),
+    scrub: document.getElementById("scrub"),
+    strip: document.getElementById("strip"),
+    axis: document.getElementById("strip-axis"),
+    legend: document.getElementById("legend"),
+    caption: document.getElementById("caption"),
+    infoBtn: document.getElementById("info-btn"),
+    speedBtn: document.getElementById("speed-btn")
+  };
+
+  var ICON_PLAY = '<path d="M8 5v14l11-7z"/>';
+  var ICON_PAUSE = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+
+  var manifest = null;
+  var meta = [];            // frame metadata, available immediately from frames.json
+  var pixels = [];          // sparse: {values, overlay} once the PNG has decoded
+  var ticks = [];
+  var stat = {};
+
+  var current = 0;
+  var visible = -1;
+  var started = false;
+  var speedIdx = 0;
+  var timer = null;
+  var map = null;
+  var pinned = null;
+  var popup = null;
+
+  // ── colour helpers ──────────────────────────────────────────────
+
+  function hexToRgb(hex) {
+    var h = hex.replace("#", "");
+    return [
+      parseInt(h.slice(0, 2), 16),
+      parseInt(h.slice(2, 4), 16),
+      parseInt(h.slice(4, 6), 16)
+    ];
+  }
+
+  function classOf(value) {
+    var b = manifest.classes.bounds;
+    for (var i = 0; i < b.length - 1; i++) {
+      if (value < b[i + 1]) return i;
+    }
+    return b.length - 2;
+  }
+
+  // ── decode a data PNG, then paint it with the class ramp ────────
+
+  function loadFrame(m) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onerror = function () { reject(new Error("Could not load " + m.file)); };
+      img.onload = function () {
+        var w = img.naturalWidth, h = img.naturalHeight;
+
+        var cv = document.createElement("canvas");
+        cv.width = w; cv.height = h;
+        var ctx = cv.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+
+        var sd = ctx.getImageData(0, 0, w, h).data;
+        var out = ctx.createImageData(w, h);
+        var od = out.data;
+
+        var values = new Uint16Array(w * h);
+        var ramp = manifest.classes.colors.map(hexToRgb);
+        var scale = manifest.value_scale;
+
+        for (var p = 0, n = w * h; p < n; p++) {
+          var o = p * 4;
+          if (sd[o + 3] === 0) { values[p] = 65535; continue; }   // 65535 == nodata
+
+          var packed = (sd[o] << 8) | sd[o + 1];
+          values[p] = packed;
+
+          var rgb = ramp[classOf(packed / scale)];
+          od[o] = rgb[0]; od[o + 1] = rgb[1]; od[o + 2] = rgb[2];
+          od[o + 3] = OVERLAY_ALPHA;
+        }
+
+        ctx.putImageData(out, 0, 0);
+
+        cv.toBlob(function (blob) {
+          resolve({
+            values: values,
+            overlay: L.imageOverlay(URL.createObjectURL(blob), m.bounds_latlon, {
+              opacity: 0,
+              className: "chla-layer",
+              interactive: false
+            })
+          });
+        }, "image/png");
+      };
+      img.src = m.file;
+    });
+  }
+
+  // ── which frames are ready ──────────────────────────────────────
+
+  function nextReady(from) {
+    for (var k = 0; k < meta.length; k++) {
+      var i = (from + k) % meta.length;
+      if (pixels[i]) return i;
+    }
+    return -1;
+  }
+
+  function nearestReady(i) {
+    if (pixels[i]) return i;
+    for (var d = 1; d < meta.length; d++) {
+      if (pixels[i - d]) return i - d;
+      if (pixels[i + d]) return i + d;
+    }
+    return -1;
+  }
+
+  // ── read the value under a click, for the frame on screen ───────
+
+  function sampleAt(i, latlng) {
+    var m = meta[i], f = pixels[i];
+    if (!f) return undefined;                    // not decoded yet
+
+    var b = m.bounds_3857;                       // [west, south, east, north]
+    var pt = L.CRS.EPSG3857.project(latlng);     // metres
+
+    var col = Math.floor((pt.x - b[0]) / (b[2] - b[0]) * m.width);
+    var row = Math.floor((b[3] - pt.y) / (b[3] - b[1]) * m.height);
+
+    if (col < 0 || row < 0 || col >= m.width || row >= m.height) return null;
+
+    var packed = f.values[row * m.width + col];
+    if (packed === 65535) return null;
+
+    return packed / manifest.value_scale;
+  }
+
+  function popupHtml(value) {
+    if (value === undefined) {
+      return '<div class="pin-value">&hellip;</div>' +
+             '<div class="pin-hint">Still loading this date.</div>';
+    }
+    if (value === null) {
+      return '<div class="pin-value">No data</div>' +
+             '<div class="pin-hint">No prediction at this pixel for ' +
+             meta[current].label + '.</div>';
+    }
+    var ci = classOf(value);
+    return '<div class="pin-value">' + value.toFixed(1) + ' &micro;g/L</div>' +
+           '<div class="pin-class">' +
+             '<span class="pin-swatch" style="background:' + manifest.classes.colors[ci] + '"></span>' +
+             manifest.classes.labels[ci] +
+           '</div>' +
+           '<div class="pin-hint">' + meta[current].label +
+             ' &middot; stays pinned as the map plays</div>';
+  }
+
+  function refreshPin() {
+    if (!pinned || !popup) return;
+    popup.setContent(popupHtml(sampleAt(current, pinned)));
+  }
+
+  // ── frame switching ─────────────────────────────────────────────
+
+  function show(i) {
+    if (i < 0) return;
+    current = i;
+
+    if (visible !== -1 && visible !== i && pixels[visible]) {
+      pixels[visible].overlay.setOpacity(0);
+    }
+    if (pixels[i]) {
+      pixels[i].overlay.setOpacity(1);
+      visible = i;
+    }
+
+    paint();
+  }
+
+  function paint() {
+    var m = meta[current];
+
+    el.label.textContent = m.label;
+    el.index.textContent = "SCENE " + (current + 1) + " / " + meta.length;
+
+    stat.min.innerHTML = "<b>" + m.min.toFixed(1) + "</b>";
+    stat.mean.innerHTML = "<b>" + m.mean.toFixed(1) + "</b>";
+    stat.max.innerHTML = "<b>" + m.max.toFixed(1) + "</b>";
+
+    if (m.coverage_pct === null || m.coverage_pct === undefined) {
+      stat.cov.innerHTML = "<b>" + m.valid_pixels.toLocaleString() + "</b>";
+      stat.covFill.style.width = "0%";
+      stat.covSub.textContent = "valid pixels";
+    } else {
+      stat.cov.innerHTML = "<b>" + m.coverage_pct.toFixed(0) + "%</b>";
+      stat.covFill.style.width = Math.min(100, m.coverage_pct) + "%";
+      stat.covSub.textContent =
+        m.valid_pixels.toLocaleString() + " of " +
+        manifest.mask_pixels.toLocaleString() + " px" +
+        (m.coverage_pct < 50 ? "  \u00B7 partial scene" : "");
+    }
+
+    el.scrub.value = current;
+
+    for (var i = 0; i < ticks.length; i++) {
+      ticks[i].classList.toggle("is-current", i === current);
+      ticks[i].classList.toggle("is-past", i < current);
+    }
+
+    refreshPin();
+  }
+
+  // ── transport ───────────────────────────────────────────────────
+
+  function stepMs() {
+    return Math.round(BASE_STEP_MS / SPEEDS[speedIdx]);
+  }
+
+  function play() {
+    if (timer) return;
+    timer = setInterval(function () {
+      show(nextReady((current + 1) % meta.length));
+    }, stepMs());
+    el.playIcon.innerHTML = ICON_PAUSE;
+    el.play.setAttribute("aria-label", "Pause animation");
+  }
+
+  function pause() {
+    clearInterval(timer);
+    timer = null;
+    el.playIcon.innerHTML = ICON_PLAY;
+    el.play.setAttribute("aria-label", "Play animation");
+  }
+
+  // ── deck, built entirely from the manifest ──────────────────────
+
+  function buildLegend() {
+    var c = manifest.classes;
+    // strip the unit out of the long labels; the heading already carries it
+    var names = c.labels.map(function (l) { return l.replace(/\s*\(.*$/, ""); });
+
+    el.legend.innerHTML = c.short.map(function (range, i) {
+      return '<div class="legend-cell">' +
+        '<i style="background:' + c.colors[i] + '"></i>' +
+        '<span class="range">' + range + '</span>' +
+        '<span class="name">' + names[i] + '</span>' +
+      '</div>';
+    }).join("");
+  }
+
+  function buildStrip() {
+    // dense records need the ticks to close ranks
+    var gap = meta.length > 60 ? 0 : (meta.length > 24 ? 1 : 2);
+    el.strip.style.setProperty("--tick-gap", gap + "px");
+
+    el.strip.innerHTML = meta.map(function (m) {
+      return '<div class="tick" style="background:' +
+        manifest.classes.colors[m.mean_class] + '" title="' +
+        m.label + ' \u2014 mean ' + m.mean.toFixed(1) + ' \u00B5g/L"></div>';
+    }).join("");
+    ticks = Array.prototype.slice.call(el.strip.children);
+
+    // year labels: keep at most six so they never collide
+    var turns = [];
+    var seen = null;
+    meta.forEach(function (m, i) {
+      if (m.year !== seen) { turns.push(i); seen = m.year; }
+    });
+    var every = Math.ceil(turns.length / 6);
+    var keep = {};
+    turns.forEach(function (i, k) { if (k % every === 0) keep[i] = true; });
+
+    el.axis.style.gap = gap + "px";
+    el.axis.innerHTML = meta.map(function (m, i) {
+      return keep[i]
+        ? '<span style="flex:1">' + m.year + "</span>"
+        : '<span class="blank" style="flex:1"></span>';
+    }).join("");
+
+    el.scrub.max = meta.length - 1;
+  }
+
+  function buildReadout() {
+    var box = L.DomUtil.create("div", "readout");
+    box.innerHTML =
+      '<div class="readout-head">Reservoir statistics <em>&micro;g/L</em></div>' +
+      '<div class="readout-row"><span>min</span><span id="stat-min"></span></div>' +
+      '<div class="readout-row"><span>mean</span><span id="stat-mean"></span></div>' +
+      '<div class="readout-row"><span>max</span><span id="stat-max"></span></div>' +
+      '<div class="readout-split"></div>' +
+      '<div class="readout-row"><span>coverage</span><span id="stat-cov"></span></div>' +
+      '<div class="cov-bar"><i id="cov-fill" style="width:0%"></i></div>' +
+      '<div class="readout-sub" id="stat-cov-sub"></div>';
+    document.getElementById("map").appendChild(box);
+    stat.min = document.getElementById("stat-min");
+    stat.mean = document.getElementById("stat-mean");
+    stat.max = document.getElementById("stat-max");
+    stat.cov = document.getElementById("stat-cov");
+    stat.covFill = document.getElementById("cov-fill");
+    stat.covSub = document.getElementById("stat-cov-sub");
+  }
+
+  function buildCaption() {
+    el.caption.innerHTML =
+      "<p>" + manifest.subtitle + ". Tap any pixel to read its predicted value; " +
+      "the reading follows the animation.</p><p>" + manifest.caption + "</p>";
+  }
+
+  function buildMap() {
+    map = L.map("map", { zoomControl: true, attributionControl: true, tap: true });
+
+    // NAIP-derived USGS imagery reads much brighter over Indiana than the Esri
+    // layers; it stops at native zoom 16, so Leaflet upsamples past that.
+    var naip = L.tileLayer(
+      "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        maxNativeZoom: 16,
+        attribution: "Imagery: USGS The National Map (NAIP)"
+      }
+    );
+
+    var clarity = L.tileLayer(
+      "https://clarity.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics"
+      }
+    );
+
+    var esri = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics"
+      }
+    );
+
+    naip.addTo(map);
+
+    L.control.layers({
+      "USGS NAIP": naip,
+      "Esri Clarity": clarity,
+      "Esri World Imagery": esri
+    }, null, { collapsed: true, position: "topright" }).addTo(map);
+
+    var union = L.latLngBounds(meta[0].bounds_latlon);
+    meta.forEach(function (m) { union.extend(m.bounds_latlon); });
+    map.fitBounds(union, { padding: [18, 18] });
+
+    map.on("click", function (e) {
+      pinned = e.latlng;
+      popup = L.popup({ className: "pin-popup", closeButton: true, autoPan: true })
+        .setLatLng(e.latlng)
+        .setContent(popupHtml(sampleAt(current, e.latlng)))
+        .openOn(map);
+    });
+
+    map.on("popupclose", function () { pinned = null; popup = null; });
+  }
+
+  // ── wiring ──────────────────────────────────────────────────────
+
+  el.play.addEventListener("click", function () { timer ? pause() : play(); });
+
+  el.speedBtn.addEventListener("click", function () {
+    speedIdx = (speedIdx + 1) % SPEEDS.length;
+    el.speedBtn.innerHTML = SPEEDS[speedIdx] + "&times;";
+    if (timer) { pause(); play(); }   // restart the interval at the new pace
+  });
+
+  el.scrub.addEventListener("input", function () {
+    pause();
+    var want = parseInt(el.scrub.value, 10);
+    var got = nearestReady(want);
+    show(got === -1 ? want : got);
+  });
+
+  el.infoBtn.addEventListener("click", function () {
+    var open = el.caption.hidden;
+    el.caption.hidden = !open;
+    el.infoBtn.setAttribute("aria-expanded", String(open));
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === " " && e.target === document.body) {
+      e.preventDefault();
+      timer ? pause() : play();
+    }
+  });
+
+  // ── boot ────────────────────────────────────────────────────────
+
+  function fail(headline, detail) {
+    el.curtain.hidden = false;
+    el.curtain.querySelector(".eyebrow").textContent = "Can't load";
+    el.curtainMsg.innerHTML = "<strong>" + headline + "</strong><br>" + detail;
+  }
+
+  function frameReady(i, f) {
+    pixels[i] = f;
+    f.overlay.addTo(map);
+    ticks[i].classList.add("is-loaded");
+
+    if (!started) {
+      started = true;
+      el.curtain.hidden = true;
+      show(i);
+      if (!reduceMotion) play();
+      else { el.playIcon.innerHTML = ICON_PLAY; el.play.setAttribute("aria-label", "Play animation"); }
+    } else if (i === current && visible !== i) {
+      show(i);   // the frame the viewer is parked on just arrived
+    }
+  }
+
+  fetch("frames.json")
+    .then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .then(function (json) {
+      manifest = json;
+      meta = manifest.frames;
+
+      el.siteName.textContent = manifest.site;
+      document.title = manifest.site + " \u2014 predicted chlorophyll-a";
+
+      // Everything except the pixels is already here, so draw the whole
+      // interface now and let the imagery fill in behind it.
+      buildLegend();
+      buildStrip();
+      buildReadout();
+      buildCaption();
+      buildMap();
+
+      var done = 0;
+      meta.forEach(function (m, i) {
+        loadFrame(m).then(function (f) {
+          frameReady(i, f);
+          done++;
+          if (!started) {
+            el.curtainMsg.textContent =
+              "Reading prediction maps\u2026 " + done + " of " + meta.length;
+          }
+        }).catch(function (err) {
+          done++;
+          if (window.console) console.warn(err.message);
+        });
+      });
+    })
+    .catch(function (err) {
+      if (location.protocol === "file:") {
+        fail(
+          "Opened as a local file.",
+          "Browsers block data loading from <code>file://</code>. " +
+          "Run <code>python -m http.server</code> in this folder, or publish it, " +
+          "then open it over http."
+        );
+      } else {
+        fail("Something is missing.", String(err.message || err));
+      }
+    });
+})();
+</script>
+</body>
+</html>
